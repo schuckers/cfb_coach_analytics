@@ -1,0 +1,360 @@
+---
+title: "cfbCoachViz"
+format: html
+editor: visual
+theme: none
+---
+
+```{r}
+library(cfbfastR)
+library(tidyverse)
+library(beeswarm)
+library(ggbeeswarm)
+library(ggplot2)
+```
+
+```{r}
+coach_all_df<-read.csv("G:/My Drive/R/cfb_coaches/Data/cfb_coaches_all.csv")%>%
+  filter(first_season<2024)
+```
+
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PrevHCAnyLevel), y = sp_rel_team,color=as.factor(PrevHCAnyLevel))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Previous HC Experience with Medians",
+       x = "Previous HC at Any Level (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(ConnectionToHiring.School), y = sp_rel_team,color=as.factor(ConnectionToHiring.School) )) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Connection to School with Medians",
+       x = "Connection to Hiring School (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(NFLCoachingExperience), y = sp_rel_team,color=as.factor(NFLCoachingExperience))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs NFL Experience with Medians",
+       x = "NFL Coaching Experience (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PromoteWithin), y = sp_rel_team,color=as.factor(PromoteWithin))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Promoted from within  with Medians",
+       x = "Promoted From Within",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PlayedNFL), y = sp_rel_team,color=as.factor(PlayedNFL))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Played in NFL with Medians",
+       x = "Played in NFL (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+
+
+
+
+```{r}
+ggplot(coach_all_df, aes(x = SideOfBall, y = sp_rel_team,color=SideOfBall)) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ vs Coaching Side of Ball (O or D) with Medians",
+       x = "Coaching Specialty (O or D)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+ 
+
+```
+
+
+```{r}
+
+ggplot(coach_all_df, aes(x = as.factor(Played.Power.4), y = sp_rel_team,color=as.factor(Played.Power.4))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Played P4 Football with Medians",
+       x = "Played P4 football (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(LeavingNFL), y = sp_rel_team,color=as.factor(LeavingNFL))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Prior Job in NFL with Medians",
+       x = "Leaving NFL (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(Regional.Ties), y = sp_rel_team,color=as.factor(Regional.Ties))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Regional Ties with Medians",
+       x = "Regional Ties (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PreviousHC), y = sp_rel_team,color=as.factor(PreviousHC))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Last Job as HC with Medians",
+       x = "Last Job as HC (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PreviousDC), y = sp_rel_team,color=as.factor(PreviousDC))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Last Job as DC with Medians",
+       x = "Last Job as DC (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(PreviousOC), y = sp_rel_team,color=as.factor(PreviousOC))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Last Job as OC with Medians",
+       x = "Last Job as OC (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(SameConf), y = sp_rel_team,color=as.factor(SameConf))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Last Job in Same Conference Plot with Medians",
+       x = "Last Job in Same Conference (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(WonCCasHCany), y = sp_rel_team,color=as.factor(WonCCasHCany))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Won Conf Champ as HC at any prev Plot with Medians",
+       x = "Previously Won CC as HC (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(WonNCasCoordAny), y = sp_rel_team,color=as.factor(WonNCasCoordAny))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Won Nat'l Champ as Coord at Any Prior Plot with Medians",
+       x = "Previously Won NC as Coord (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(WonCCasCoordAny), y = sp_rel_team,color=as.factor(WonCCasCoordAny))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Won Conf Champ as Coord at Any Prior Plot with Medians",
+       x = "Previously Won CC as Coord (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(WonNCasHCany), y = sp_rel_team,color=as.factor(WonNCasHCany))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Won Natl Champ as HC at Any Prior Plot with Medians",
+       x = "Previously Won NC as HC (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(RecruitingCoord), y = sp_rel_team,color=as.factor(RecruitingCoord))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Recruiting Coord at Any Prior Plot with Medians",
+       x = "Previously Recruiting Coord (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = as.factor(Conf.LeavingP4), y = sp_rel_team,color=as.factor(Conf.LeavingP4))) +
+  geom_beeswarm(cex=3)+
+  stat_summary(fun = median, geom = "crossbar", width = 0.5, color = "red")+
+   labs(title = "SP+ Rel vs Leaving P4 job Plot with Medians",
+       x = "Leaving a P4 job (Yes=1)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = AgeAtHiringMinus50, y = sp_rel_team)) +
+  geom_point()+geom_smooth()+
+   labs(title = "SP+ Rel vs Age When Hired Plot",
+       x = "Age at Jan 1 of First Season Minus 50",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+
+```
+```{r}
+cor(coach_all_df$AgeAtHiringMinus50,coach_all_df$sp_rel_team, use="pairwise.complete.obs")
+```
+
+
+Try quadratic fit to aging
+
+```{r}
+ggplot(coach_all_df, aes(x = AgeAtHiringMinus50, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm",formula=y~poly(x,2))+
+   labs(title = "SP+ Rel vs Age When Hired Plot",
+       x = "Age at Jan 1 of First Season",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+
+```{r}
+ggplot(coach_all_df, aes(x = numb_years_Coord_HC, y = sp_rel_team)) +
+  geom_point()+geom_smooth()+
+   labs(title = "SP+ Rel vs Years as Coord or HC When Hired Plot",
+       x = "# of Years as Coord or HC when Hired",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = numb_years_Coord_HC, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm",formula =y ~ poly(x, 2))+
+   labs(title = "SP+ Rel vs Years as Coord or HC When Hired Plot",
+       x = "# of Years as Coord or HC when Hired",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+coach_all_df %>% filter(GamesAsHCPrior>0)%>%
+ggplot( aes(x = GamesAsHCPrior, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Games Coach Prior",
+        subtitle="Only for Previous College HC's",
+       x = "# of Games as HC at any level before Hired (n>0)",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+```{r}
+coach_all_df %>% filter(GamesAsHCPrior>0)%>%
+ggplot( aes(x = PreviousWinPct, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Win % in Last HC Role Plot",
+        subtitle="Only for Previous College HC's",
+       x = "Coaches Win Pct Last HC job",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+```{r}
+coach_all_df %>% filter(GamesAsHCPrior>0)%>%
+ggplot( aes(x = AllPriorWinPct, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Wins Before all HC before Hired Plot",
+        subtitle="Only for Previous College HC's",
+       x = "Coaches Win Pct All Teams Before Hired",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+```{r}
+
+ggplot(coach_all_df, aes(x = sp_prev_rel, y = sp_rel_team)) +
+  geom_point()+geom_smooth()+
+   labs(title = "SP+ Rel Before Hired vs SP+ Rel After Hired",
+        subtitle="Only for Previous College HC's",
+       x = "SP+ rel before Hired",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+coach_all_df %>% filter(GamesAsHCPrior>0)%>%
+ggplot( aes(x = sp_prev_rel, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel Before Hired vs SP+ Rel After Hired",
+            subtitle="Only for Previous College HC's with data available",
+       x = "SP+ rel before Hired",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+```{r}
+ggplot(coach_all_df, aes(x = team_sp_recent, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Recent Team SP+ in Previous 5 Years",
+       x = "Team SP+ in last 5 years",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = sp_rel_team, y = team_winpct_recent)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Team Win Pct in Previous 5 Years before Hired Plot",
+       x = "Team Win Pct in 5 years before Hiring",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+ggplot(coach_all_df, aes(x = team_sp_prev, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Team SP+ in Previous 15 Years before Hired Plot",
+       x = "Team SP+ in 15 years before Hiring",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+
+
+```{r}
+coach_all_df %>% 
+  filter(PrevHCAnyLevel==1)%>%
+ggplot(aes(x = PreviousWinPct, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Coaches Previous Win % Plot",
+            subtitle="Only for Previous College HC's",
+       x = "Coach Previous Win %",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```
+
+```{r}
+coach_all_df %>%
+  filter(PreviousHC==1)%>%
+ggplot( aes(x = sp_prev_rel, y = sp_rel_team)) +
+  geom_point()+geom_smooth(method="lm")+
+   labs(title = "SP+ Rel vs Coach SP+ before Hiring",
+        subtitle="Only College HC Coaches for which we have SP+",
+       x = "Coach SP+ Rel before Hiring ",
+       y = "SP+ relative to Team (Prev 15 years) as Coach")
+```

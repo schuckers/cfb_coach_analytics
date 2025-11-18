@@ -1,0 +1,300 @@
+---
+title: "CFB_coach_hire"
+format: html
+editor: visual
+---
+
+### Loading necessary libraries
+
+```{r}
+library(cfbfastR)
+library(tidyverse)
+library(glmnet)
+```
+*prev_years* defines how many years back we want to go before the coach
+started as relevant for comparisons.  
+```{r}
+prev_years=15
+recent_years=5
+
+```
+
+The *coaches_bio_df* has demographic information about the coaches of interest.  Most of
+these data are obtained from wikipedia sites for each coach and have been entered manually.
+```{r}
+coach_pred_df=read.csv("https://webpages.charlotte.edu/mschuck1/sports/Prediction2025.csv")
+
+coach_bio_df<-read.csv("https://webpages.charlotte.edu/mschuck1/sports/CoachingData2025.csv") %>%
+  bind_rows(coach_pred_df)%>%
+  rename(name=Name) %>%
+  rename(school=School.Hiring) %>%
+  rename(last_season=Last.year.as.HC.for.which.they.were.hired)%>%
+  rename(first_season = First.Season)%>%
+  rename(numb_years_Coord_HC=Number.of.years.as.an.OC.DC.AHC.HC.when.hired)%>%
+  mutate(PreviousHC = as.numeric(Previous.Position=="HC"),
+         PreviousOC = as.numeric(Previous.Position=="OC"),
+         PreviousDC = as.numeric(Previous.Position=="DC"),
+         PreviousWinPct = (Wins.at.Prev+1e-5)/(Wins.at.Prev+2e-5+Losses.at.Prev),
+         Conf.LeavingP4= case_when(
+           Conf.Leaving=="ACC" ~ 1,
+           Conf.Leaving=="Big 12" ~ 1,
+           Conf.Leaving=="Big Ten" ~1,
+           Conf.Leaving=="Big12" ~1,
+           Conf.Leaving=="CUSA" ~0,
+           Conf.Leaving=="FCS" ~0,
+           Conf.Leaving=="Indep"~1,
+           Conf.Leaving=="MAC" ~ 0,
+           Conf.Leaving=="MidMajor"~0,
+           Conf.Leaving=="NFL" ~ 0,
+           Conf.Leaving=="None" ~0,
+           Conf.Leaving=="Pac" ~1,
+           Conf.Leaving=="SEC" ~ 1,
+           Conf.Leaving=="SunBelt" ~ 0,
+           Conf.Leaving=="SWC" ~0,
+           Conf.Leaving=="NA"~0),
+         LeavingNFL = as.numeric(Conf.Leaving=="NFL"),
+         SameConf=as.numeric(Conf.Hired==Conf.Leaving), 
+         AgeAtHiringMinus50=(first_season-Birth.Year)-50,
+         PromoteWithin=as.numeric(school==School.Leaving)
+         ) %>%
+  rename(WonNCasHCany=Won.National.Championship.as.HC.at.any.level,
+         WonCCasHCany=Won.conference.championship.as.HC.at.any.level,
+         WonNCasCoordAny=Won.National.championship.as.OC.DC.at.any.level,
+         WonCCasCoordAny=Won.conference.championship.as.OC.DC.at.any.level,
+         WinsBeforeHireAny=Wins.as.college..any.level...or.NFL.HC.before.hire,
+         LossesBeforeHireAny=Losses.as.college..any.level..or.NFL.HC.before.hire
+         ) %>%
+  mutate(GamesAsHCPrior=WinsBeforeHireAny+LossesBeforeHireAny,
+         AllPriorWinPct= (WinsBeforeHireAny)/(GamesAsHCPrior))%>%
+    select(-Conference.leaving.P4.or.not) 
+
+
+
+```
+
+Add a prediction data frame based upon 
+
+```{r}
+coach_pred_df=read.csv("https://webpages.charlotte.edu/mschuck1/sports/Prediction2025.csv")
+```
+
+The data frame created below has historical data on each coaches season for the years 1976 to 2025.
+```{r}
+coach_hist_df<-cfbd_coaches() %>% filter(year>1949) %>%
+  mutate(name=paste0(first_name," ",last_name)) %>%
+  select(-c(first_name,last_name))
+
+
+#RR <- cfbd_coaches() %>% filter(year>1949) %>%
+#  mutate(name=paste0(first_name," ",last_name)) %>%
+#  filter(name == "Rich Rodriguez") %>%
+#  filter(year>2018)
+
+#GS <- cfbd_coaches() %>% filter(year>1949) %>%
+#  mutate(name=paste0(first_name," ",last_name)) %>%
+#  filter(name == "Greg Schiano") %>%
+#  filter(year>2018)
+
+#coach_hist_df <- coach_hist_df %>% bind_rows(RR) %>% bind_rows(GS)
+           
+```
+*Need to add wins and losses to teams for 2025 though SRS
+
+
+define ranges for *SP* and *SRS* for later doing transformation
+```{r}
+range_sp= range(coach_hist_df$sp_overall,na.rm=TRUE)
+range_srs = range(coach_hist_df$srs, na.rm=TRUE)
+
+```
+
+
+Get coaches performance for hiring team
+
+Considered weight mean which weights more recent seasons more heavily
+```{r}
+n_hires=nrow(coach_bio_df)
+
+# we use WinsPostHire as entered manually for our 
+# mid season (November) of 2025 analysis since 
+# cfbfastr does not update the wins and games for a coach in season
+#
+
+coach_bio_df <- coach_bio_df %>%
+  mutate(coach_sp = NA,
+         coach_winpct=WinsPostHire/(WinsPostHire+LossesPostHire),
+         coach_srs=NA)
+
+for (i in 1:n_hires)
+{
+  temp<- coach_hist_df %>% 
+    filter(school==coach_bio_df$school[i])%>%
+    filter(name==coach_bio_df$name[i])%>%
+    filter(year>= coach_bio_df$first_season[i])%>% # this is for GSchiano and RRodriguez
+    filter(year<= coach_bio_df$last_season[i]) %>%
+    mutate(wi=seq(1,nrow(temp)))%>%
+    summarize(coach_sp_mean=mean(sp_overall,trim=0.1,na.rm=TRUE),
+              coach_srs_mean=mean(srs,trim=0.1,na.rm=TRUE),
+              coach_sp_wmean=sum(wi*sp_overall,na.rm=TRUE)/sum(wi,na.rm=TRUE),
+              coach_srs_wmean=sum(wi*srs,na.rm=TRUE)/sum(wi,na.rm=TRUE))
+    
+   coach_bio_df$coach_sp[i] = temp$coach_sp_mean
+   coach_bio_df$coach_srs[i] = temp$coach_srs_mean
+   #coach_bio_df$coach_winpct[i] = sum(temp$wins)/sum(temp$games)
+}
+
+
+```
+
+
+Get performance of school/team in *prev_years* before coach was hired.
+
+```{r}
+n_hires=nrow(coach_bio_df)
+
+coach_bio_df <- coach_bio_df %>%
+  mutate(sp_rel_team = NA,
+         winpct_rel_team=NA,
+         srs_rel_team=NA) %>%
+  mutate(team_sp_prev=NA,
+         team_srs_prev=NA,
+         team_winpct_prev=NA)
+
+for (i in 1:n_hires)
+{
+  temp<- coach_hist_df %>% 
+    filter(school==coach_bio_df$school[i])%>%
+    filter(year<coach_bio_df$first_season[i] & year > coach_bio_df$first_season[i]-(prev_years+1)) 
+    
+   coach_bio_df$sp_rel_team[i] = coach_bio_df$coach_sp[i] -mean(temp$sp_overall, trim=0.1,na.rm=TRUE)
+   coach_bio_df$srs_rel_team[i] = coach_bio_df$coach_srs[i] -mean(temp$srs,trim=0.1,na.rm=TRUE)
+   coach_bio_df$winpct_rel_team[i] = coach_bio_df$coach_winpct[i] - sum(temp$wins)/sum(temp$games)
+   
+   coach_bio_df$team_sp_prev[i]=mean(temp$sp_overall,trim=0.1,na.rm=TRUE)
+   coach_bio_df$team_srs_prev[i]=mean(temp$srs,trim=0.1,na.rm=TRUE)
+   coach_bio_df$team_winpct_prev[i]=sum(temp$wins)/sum(temp$games)
+   
+}
+
+```
+
+```{r}
+coach_bio_df <- coach_bio_df %>%
+  mutate(team_sp_recent=NA,
+         team_srs_recent=NA,
+         team_winpct_recent=NA)
+
+for (i in 1:n_hires)
+{
+  temp<- coach_hist_df %>% 
+    filter(school==coach_bio_df$school[i])%>%
+    filter(year<coach_bio_df$first_season[i] & year > coach_bio_df$first_season[i]-(recent_years+1)) 
+    
+   coach_bio_df$team_sp_recent[i]=mean(temp$sp_overall,trim=0.1,na.rm=TRUE)
+   coach_bio_df$team_srs_recent[i]=mean(temp$srs,trim=0.1,na.rm=TRUE)
+   coach_bio_df$team_winpct_recent[i]=sum(temp$wins)/sum(temp$games)
+   
+}
+```
+
+
+
+Get coaching performance before being hired again relative to historical
+```{r}
+
+# get number of rows in the coach bio df
+n_hires=nrow(coach_bio_df)
+
+
+
+# coach_team_hist_df will have past history (pre-hire) for coaches
+# that have been HC's before 
+coach_team_hist_df=NULL
+for (i in 1:n_hires)
+{
+  #create temp df with information about past coaching jobs
+  temp<-coach_hist_df %>%
+    filter(name==coach_bio_df$name[i])%>%
+    filter(year< coach_bio_df$first_season[i]) %>%
+    group_by(school)%>%
+    summarize(numb_games=sum(games),
+              winpct=sum(wins)/sum(games),
+              avg_srs=mean(srs,trim=0.1,na.rm=TRUE),
+              avg_sp=mean(sp_overall,trim=0.1,na.rm=TRUE), 
+              start_year=min(year,na.rm=TRUE),
+                end_year = max(year,na.rm=TRUE))%>%
+    mutate(name=coach_bio_df$name[i]) %>%
+    filter(numb_games>10)
+  
+  coach_team_hist_df<-coach_team_hist_df %>% 
+      bind_rows(temp)
+}
+```
+
+```{r}
+# add three new variables for past performance as HC
+coach_team_hist_df <- coach_team_hist_df %>%
+  mutate(coach_team_sp_past = NA,
+         coach_team_srs_past=NA,
+         coach_team_winpct_past=NA)
+
+#coach_temp_df=NULL
+temp=NULL
+for (i in 1:nrow(coach_team_hist_df))
+{
+  # get performance statistics for 25 years before previous coaching stops
+  temp<- coach_hist_df %>% 
+    filter(school==coach_team_hist_df$school[i])%>%
+    filter(year<coach_team_hist_df$start_year[i]) %>%
+    filter(year>(coach_team_hist_df$start_year[i]-(prev_years+1)))%>%
+      summarize(
+        past_sp=mean(sp_overall,trim=0.1,na.rm=TRUE),
+        past_srs=mean(srs,trim=0.1,na.rm=TRUE),
+        past_winpct=sum(wins,na.rm=TRUE)/sum(games,na.rm=TRUE),
+        n_games=sum(games,na.rm=TRUE)
+      ) 
+    
+coach_team_hist_df$coach_team_sp_past[i]=temp$past_sp
+coach_team_hist_df$coach_team_srs_past[i]=temp$past_srs
+coach_team_hist_df$coach_team_winpct_past[i]=temp$past_winpct
+}
+
+```
+
+
+ZZ what is this exactly
+```{r}
+
+
+# coach_bio_df
+coach_bio_df<-coach_bio_df %>%
+  mutate(sp_prev_rel=NA,
+         srs_prev_rel=NA,
+         winpct_prev_rel=NA)
+temp=NULL
+
+for(i in 1:n_hires)
+{
+    temp<-coach_team_hist_df %>%
+      filter(name==coach_bio_df$name[i])%>%
+      filter(start_year< coach_bio_df$first_season[i])%>%
+      group_by(name)%>%
+      summarize(sp_prev_rel= sum(numb_games*(avg_sp-coach_team_sp_past),na.rm=TRUE)/sum(numb_games,na.rm=TRUE),
+                srs_prev_rel=sum(numb_games*(avg_srs-coach_team_srs_past),na.rm=TRUE)/sum(numb_games,na.rm=TRUE),
+                winpct_prev_rel=sum(numb_games*(winpct-coach_team_winpct_past),na.rm=TRUE)/sum(numb_games,na.rm=TRUE)
+        )
+    if(nrow(temp)>0)
+    {
+    coach_bio_df$sp_prev_rel[i]=temp$sp_prev_rel
+    coach_bio_df$srs_prev_rel[i]=temp$srs_prev_rel
+    coach_bio_df$winpct_prev_rel[i]=temp$winpct_prev_rel
+    }
+}
+
+```
+
+
+```{r}
+write.csv(coach_bio_df,"G:/My Drive/R/cfb_coaches/Data/cfb_coaches_all.csv")
+```
+

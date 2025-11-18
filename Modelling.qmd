@@ -1,0 +1,255 @@
+---
+title: "Modelling CFB Coaches"
+format: html
+editor: visual
+---
+
+```{r}
+library(glmnet)
+library(ggplot2)
+set.seed(11125)
+```
+
+
+```{r}
+coach_all_df<-read.csv("G:/My Drive/R/cfb_coaches/Data/cfb_coaches_all.csv") %>%
+  filter(first_season<2024)
+coach_pred_df<-read.csv("G:/My Drive/R/cfb_coaches/Data/cfb_coaches_all.csv") %>%
+  filter(first_season==2026)
+
+```
+
+Do so replacing of NA's when we do not have data on a coach with zero's. 
+This is effectively creating an interaction with whether or not we have
+data but it is somewhat problematic for the following variables since
+the _rel ones have zero as a reasonable value.
+```{r}
+coach_all_df$prevCollegeHC=as.numeric(is.na(coach_all_df$sp_prev_rel))
+coach_all_df$sp_prev_rel=replace_na(coach_all_df$sp_prev_rel,replace=0)
+coach_all_df$srs_prev_rel=replace_na(coach_all_df$srs_prev_rel,replace=0)
+coach_all_df$winpct_prev_rel=replace_na(coach_all_df$winpct_prev_rel,replace=0)
+coach_all_df$AllPriorWinPct=replace_na(coach_all_df$AllPriorWinPct,replace=0)
+```
+
+
+Specify our target variable, _y_, and our matrix of predictors, _X_.
+```{r}
+y=coach_all_df$sp_rel_team
+
+X=coach_all_df %>%
+  mutate(numb_years_Coord_HCadj=numb_years_Coord_HC-mean(numb_years_Coord_HC))%>%
+  mutate(numb_years_Coord_HCadj2=numb_years_Coord_HCadj^2)%>%
+  mutate(Side_O=as.numeric(SideOfBall=="O"))%>%
+  select(prevCollegeHC,ConnectionToHiring.School,NFLCoachingExperience,
+         RecruitingCoord,PlayedNFL,Played.Power.4,WonNCasHCany,
+         WonCCasHCany,WonNCasCoordAny,WonCCasCoordAny,LeavingNFL,Regional.Ties,
+         numb_years_Coord_HCadj,numb_years_Coord_HCadj2, AllPriorWinPct,
+         PreviousHC,PreviousOC,PreviousDC, Conf.LeavingP4,SameConf,AgeAtHiringMinus50,
+         sp_prev_rel,winpct_prev_rel,team_sp_prev,team_sp_recent,
+         GamesAsHCPrior, team_winpct_recent,Side_O,PromoteWithin) %>%
+  as.matrix()
+
+```
+
+Make X_pred matrix for prediction of new obs
+
+```{r}
+
+coach_pred_df$prevCollegeHC=as.numeric(is.na(coach_pred_df$sp_prev_rel))
+coach_pred_df$sp_prev_rel=replace_na(coach_pred_df$sp_prev_rel,replace=0)
+coach_pred_df$srs_prev_rel=replace_na(coach_pred_df$srs_prev_rel,replace=0)
+coach_pred_df$winpct_prev_rel=replace_na(coach_pred_df$winpct_prev_rel,replace=0)
+coach_pred_df$AllPriorWinPct=replace_na(coach_pred_df$AllPriorWinPct,replace=0)
+
+X_pred = coach_pred_df %>%
+  mutate(numb_years_Coord_HCadj=numb_years_Coord_HC-mean(numb_years_Coord_HC))%>%
+  mutate(numb_years_Coord_HCadj2=numb_years_Coord_HCadj^2)%>%
+  mutate(Side_O=as.numeric(SideOfBall=="O"))%>%
+  select(prevCollegeHC,ConnectionToHiring.School,NFLCoachingExperience,
+         RecruitingCoord,PlayedNFL,Played.Power.4,WonNCasHCany,
+         WonCCasHCany,WonNCasCoordAny,WonCCasCoordAny,LeavingNFL,Regional.Ties,
+         numb_years_Coord_HCadj,numb_years_Coord_HCadj2, AllPriorWinPct,
+         PreviousHC,PreviousOC,PreviousDC, Conf.LeavingP4,SameConf,AgeAtHiringMinus50,
+         sp_prev_rel,winpct_prev_rel,team_sp_prev,team_sp_recent,
+         GamesAsHCPrior, team_winpct_recent,Side_O,PromoteWithin) %>%
+  as.matrix()
+```
+
+
+
+## Lasso
+Run Lasso with cross-validation
+```{r}
+
+cv_cfb_lasso<-cv.glmnet(X,y,alpha=1,nfolds=8, penalty.factor=c(0,rep(1,ncol(X)-1)))
+
+coef(cv_cfb_lasso, s = "lambda.1se")
+coef(cv_cfb_lasso, s = "lambda.min")
+plot(cv_cfb_lasso)
+
+
+```
+```{r}
+fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_lasso$beta
+
+print(coef(fit_lasso, s = "lambda.min")[1,1])
+betas_lasso=coef(fit_lasso, s = "lambda.min")
+```
+Look at lasso with full within sample data
+```{r}
+fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+pred_lasso_min=predict(fit_lasso,X,type="response")
+sum((pred_lasso_min-y)^2)
+
+fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+pred_lasso_1se=predict(fit_lasso,X,type="response")
+sum((pred_lasso_1se-y)^2)
+
+```
+
+Run Ridge with Cross-Validation
+```{r}
+cv_cfb_ridge<-cv.glmnet(X,y,alpha=0,nfolds=8)
+
+coef(cv_cfb_ridge, s = "lambda.1se")
+coef(cv_cfb_ridge, s = "lambda.min")
+plot(cv_cfb_ridge)
+```
+```{r}
+fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=0,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_ridge$beta
+# get coefficienes for ridge regression with lambda.min 
+# lambda.min is the value of lambda that generated the lowest
+# cross validated error
+betas_ridge=coef(fit_ridge, s = "lambda.min")
+```
+Look at ridge with full in sample data
+```{r}
+fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
+pred_ridge_min=predict(fit_ridge,X,type="response")
+sum((pred_ridge_min-y)^2)
+
+fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
+pred_ridge_1se=predict(fit_ridge,X,type="response")
+sum((pred_ridge_1se-y)^2)
+
+# get intercept term for ridge regression at lambda with lowest 
+print(coef(fit_ridge, s = "lambda.min")[1,1])
+```
+So lasso does better with cross validation and ridge does better on purely in sample.  We are going to go with the one that is superior on the cross-validation.  
+
+
+Put all data back into the model and get values based upon lambda.min since lasso with s=lambda.min gives best cross validation results.
+
+
+Comparing results for Lasso and Ridge on Cross validation
+```{r}
+min(cv_cfb_lasso$cvm)
+min(cv_cfb_ridge$cvm)
+```
+
+Refit lasso with all the data and get coefficients.  
+```{r}
+fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1, penalty.factor=c(0,rep(1,ncol(X)-1)))
+round(fit_lasso$beta,3)
+print(coef(fit_lasso, s = "lambda.min")[1,1])
+betas_lasso=round(coef(fit_lasso, s = "lambda.min"),2)
+```
+
+Run a loop across different folds to get cvm from lasso and ridge as well
+as get value for lambda.min.
+
+```{r}
+
+numb_reps=20
+out=data.frame(lasso_cvm=rep(NA,numb_reps),
+               ridge_cvm=rep(NA,numb_reps),
+               lasso_lambda_min=rep(NA,numb_reps),
+               ridge_lambda_min=rep(NA,numb_reps))
+
+
+
+set.seed(111525)
+for (i in 1: numb_reps)
+{
+cv_cfb_ridge<-cv.glmnet(X,y,alpha=0,nfolds=8, penalty.factor=c(0,rep(1,ncol(X)-1)))
+cv_cfb_lasso<-cv.glmnet(X,y,alpha=1,nfolds=8, penalty.factor=c(0,rep(1,ncol(X)-1)))
+out$lasso_cvm[i]=min(cv_cfb_lasso$cvm)
+out$lasso_lambda_min=cv_cfb_lasso$lambda.min
+out$ridge_cvm[i]=min(cv_cfb_ridge$cvm)
+out$ridge_lambda_min[i]=cv_cfb_ridge$lambda.min
+}
+```
+
+
+```{r}
+mean(out$lasso_cvm-out$ridge_cvm)
+mean(out$lasso_cvm<out$ridge_cvm)
+mean(out$lasso_lambda_min)
+```
+
+
+
+```{r}
+fit_lasso<-glmnet(X,y,lambda=mean(out$lasso_lambda_min),alpha=1, penalty.factor=c(0,rep(1,ncol(X)-1)))
+round(fit_lasso$beta,3)
+round(coef(fit_lasso,s=mean(out$lasso_lambda_min))[1,1],3)
+```
+
+
+Get correlation between prediction and actual
+```{r}
+
+cor(predict(fit_lasso,newx=X),coach_all_df$sp_rel_team)
+print(fit_lasso)
+print(sqrt(mean(out$lasso_cvm))) 
+```
+Correlation is about $0.52$ and the percent of variability explained is about 24\%.
+
+Note that the mean cross-validated RMSE was $7.35$ and that suggests that our prediction is off on average by 7 points.  There is a lot of variability in coaching hire outcomes.
+
+## Different Response use srs_rel
+Not needed as correlation between sp_team_rel and srs_team_rel is 0.95.
+
+## Remove the coaches who have been in place only a single year
+
+
+## 
+
+Get top coaches by SP+ Rel
+```{r}
+coach_all_df %>% arrange(desc(sp_rel_team)) %>% select (name,school,sp_rel_team) %>%slice(1:10) %>% mutate(sp_rel_team=round(sp_rel_team,1))
+
+```
+
+Bottom 10
+```{r}
+ coach_all_df %>% arrange(sp_rel_team) %>% select (name,school,sp_rel_team) %>%slice(1:10) %>% mutate(sp_rel_team=round(sp_rel_team,1))
+```
+
+```{r}
+pred_lasso=predict(fit_lasso,newx=X,lambda=mean(out$lasso_lambda_min),alpha=1,penalty.factor=c(0,rep(1,ncol(X)-1)))
+```
+
+
+Get top and bottom predicted coaching hires
+```{r}
+coach_all_df%>% mutate(pred=round(pred_lasso,1))%>%
+  mutate(sp_rel_team=round(sp_rel_team,1)) %>%
+  arrange(desc(pred))%>%select(name,school,sp_rel_team,pred)%>%slice(c(1:10,94:103)) 
+
+```
+Confusion matrix relative to value of 0
+```{r}
+table(pred_lasso>0,coach_all_df$sp_rel_team>0)
+```
+Make Predictions based upon Kalshi top bets 
+```{r}
+pred_lasso2=predict(fit_lasso,newx=X_pred,lambda=mean(out$lasso_lambda_min),alpha=1,penalty.factor=c(0,rep(1,ncol(X)-1)))
+
+coach_pred_df %>% mutate(pred=round(pred_lasso2,1)) %>%
+  arrange(desc(pred))%>%select(name,school,sp_rel_team,pred)
+    
+```
+
