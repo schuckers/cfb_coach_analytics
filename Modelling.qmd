@@ -10,6 +10,7 @@ library(ggplot2)
 set.seed(11125)
 ```
 
+Read in the data including values to which we want to predict
 
 ```{r}
 coach_all_df<-read.csv("G:/My Drive/R/cfb_coaches/Data/cfb_coaches_all.csv") %>%
@@ -89,8 +90,22 @@ plot(cv_cfb_lasso)
 
 
 ```
+
+## Ridge
+Run Ridge with cross-validation
 ```{r}
-fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+
+cv_cfb_ridge<-cv.glmnet(X,y,alpha=0,nfolds=8, penalty.factor=c(0,rep(1,ncol(X)-1)))
+
+coef(cv_cfb_ridge, s = "lambda.1se")
+coef(cv_cfb_ridge, s = "lambda.min")
+plot(cv_cfb_ridge)
+
+
+```
+
+```{r}
+fit_lasso<-glmnet(X,y,lambda=cv_cfb_lasso$lambda.min,alpha=1, penalty.factor=c(0,rep(1,ncol(X)-1)))
 fit_lasso$beta
 
 print(coef(fit_lasso, s = "lambda.min")[1,1])
@@ -98,11 +113,11 @@ betas_lasso=coef(fit_lasso, s = "lambda.min")
 ```
 Look at lasso with full within sample data
 ```{r}
-fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_lasso<-glmnet(X,y,lambda=cv_cfb_lasso$lambda.min,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
 pred_lasso_min=predict(fit_lasso,X,type="response")
 sum((pred_lasso_min-y)^2)
 
-fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_lasso<-glmnet(X,y,lambda=cv_cfb_ridge$lambda.1se,alpha=1,, penalty.factor=c(0,rep(1,ncol(X)-1)))
 pred_lasso_1se=predict(fit_lasso,X,type="response")
 sum((pred_lasso_1se-y)^2)
 
@@ -117,7 +132,7 @@ coef(cv_cfb_ridge, s = "lambda.min")
 plot(cv_cfb_ridge)
 ```
 ```{r}
-fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=0,, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_ridge<-glmnet(X,y,lambda=cv_cfb_ridge$lambda.1se,alpha=0,, penalty.factor=c(0,rep(1,ncol(X)-1)))
 fit_ridge$beta
 # get coefficienes for ridge regression with lambda.min 
 # lambda.min is the value of lambda that generated the lowest
@@ -126,36 +141,29 @@ betas_ridge=coef(fit_ridge, s = "lambda.min")
 ```
 Look at ridge with full in sample data
 ```{r}
-fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_ridge<-glmnet(X,y,lambda=cv_cfb_lasso$lambda.min,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
 pred_ridge_min=predict(fit_ridge,X,type="response")
 sum((pred_ridge_min-y)^2)
 
-fit_ridge<-glmnet(X,y,lambda=cv_cfb$lambda.1se,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
+fit_ridge<-glmnet(X,y,lambda=cv_cfb_ridge$lambda.1se,alpha=0, penalty.factor=c(0,rep(1,ncol(X)-1)))
 pred_ridge_1se=predict(fit_ridge,X,type="response")
 sum((pred_ridge_1se-y)^2)
 
 # get intercept term for ridge regression at lambda with lowest 
 print(coef(fit_ridge, s = "lambda.min")[1,1])
 ```
-So lasso does better with cross validation and ridge does better on purely in sample.  We are going to go with the one that is superior on the cross-validation.  
-
-
-Put all data back into the model and get values based upon lambda.min since lasso with s=lambda.min gives best cross validation results.
-
-
 Comparing results for Lasso and Ridge on Cross validation
 ```{r}
 min(cv_cfb_lasso$cvm)
 min(cv_cfb_ridge$cvm)
 ```
 
-Refit lasso with all the data and get coefficients.  
-```{r}
-fit_lasso<-glmnet(X,y,lambda=cv_cfb$lambda.min,alpha=1, penalty.factor=c(0,rep(1,ncol(X)-1)))
-round(fit_lasso$beta,3)
-print(coef(fit_lasso, s = "lambda.min")[1,1])
-betas_lasso=round(coef(fit_lasso, s = "lambda.min"),2)
-```
+## Cross-validation
+
+So far, lasso does better with cross validation and ridge does better on purely in sample.  We are going to go with the one that is superior on the cross-validation but let's 
+do more than one randomization of the cross-validation.  So below we do 20 randomizations
+of the 'folds'.
+
 
 Run a loop across different folds to get cvm from lasso and ridge as well
 as get value for lambda.min.
@@ -188,12 +196,13 @@ mean(out$lasso_cvm-out$ridge_cvm)
 mean(out$lasso_cvm<out$ridge_cvm)
 mean(out$lasso_lambda_min)
 ```
+So lasso has a small cvm (cross validation measure) when s=lambda.min on average and that is true for 100%, all 20,  of the cross validated randomiztions.
 
-
-
+That suggest lasso is the way to go.
 ```{r}
 fit_lasso<-glmnet(X,y,lambda=mean(out$lasso_lambda_min),alpha=1, penalty.factor=c(0,rep(1,ncol(X)-1)))
 round(fit_lasso$beta,3)
+print("Intercept")
 round(coef(fit_lasso,s=mean(out$lasso_lambda_min))[1,1],3)
 ```
 
@@ -205,7 +214,7 @@ cor(predict(fit_lasso,newx=X),coach_all_df$sp_rel_team)
 print(fit_lasso)
 print(sqrt(mean(out$lasso_cvm))) 
 ```
-Correlation is about $0.52$ and the percent of variability explained is about 24\%.
+Correlation is about $0.52$ and the percent of variability explained is about 25\%.
 
 Note that the mean cross-validated RMSE was $7.35$ and that suggests that our prediction is off on average by 7 points.  There is a lot of variability in coaching hire outcomes.
 
@@ -249,7 +258,8 @@ Make Predictions based upon Kalshi top bets
 pred_lasso2=predict(fit_lasso,newx=X_pred,lambda=mean(out$lasso_lambda_min),alpha=1,penalty.factor=c(0,rep(1,ncol(X)-1)))
 
 coach_pred_df %>% mutate(pred=round(pred_lasso2,1)) %>%
-  arrange(desc(pred))%>%select(name,school,sp_rel_team,pred)
+  mutate(pred_srs=pred+team_srs_prev)%>%
+  arrange(school)%>%select(name,school,pred_srs,pred)
     
 ```
 

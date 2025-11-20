@@ -72,12 +72,6 @@ coach_bio_df<-read.csv("https://webpages.charlotte.edu/mschuck1/sports/CoachingD
 
 ```
 
-Add a prediction data frame based upon 
-
-```{r}
-coach_pred_df=read.csv("https://webpages.charlotte.edu/mschuck1/sports/Prediction2025.csv")
-```
-
 The data frame created below has historical data on each coaches season for the years 1976 to 2025.
 ```{r}
 coach_hist_df<-cfbd_coaches() %>% filter(year>1949) %>%
@@ -112,6 +106,9 @@ range_srs = range(coach_hist_df$srs, na.rm=TRUE)
 Get coaches performance for hiring team
 
 Considered weight mean which weights more recent seasons more heavily
+'wi= seq(1,1,length=nrow(temp))' this gives equal weights
+'wi= seq(1,2,length=nrow(temp))' this gives weights that are twice as much 
+for more recent seasons.
 ```{r}
 n_hires=nrow(coach_bio_df)
 
@@ -131,15 +128,21 @@ for (i in 1:n_hires)
     filter(school==coach_bio_df$school[i])%>%
     filter(name==coach_bio_df$name[i])%>%
     filter(year>= coach_bio_df$first_season[i])%>% # this is for GSchiano and RRodriguez
-    filter(year<= coach_bio_df$last_season[i]) %>%
-    mutate(wi=seq(1,nrow(temp)))%>%
+    filter(year<= coach_bio_df$last_season[i])
+    
+    temp<-temp %>%mutate(wi=seq(1,1,length=nrow(temp))) %>%
+  # temp<-temp %>%mutate(wi=seq(1,2,length=nrow(temp))) %>%
+  # above code makes weights with linear increase from 1 to 2
+  # where the most reason season is weighted more heavily than the last
     summarize(coach_sp_mean=mean(sp_overall,trim=0.1,na.rm=TRUE),
               coach_srs_mean=mean(srs,trim=0.1,na.rm=TRUE),
               coach_sp_wmean=sum(wi*sp_overall,na.rm=TRUE)/sum(wi,na.rm=TRUE),
-              coach_srs_wmean=sum(wi*srs,na.rm=TRUE)/sum(wi,na.rm=TRUE))
+              coach_srs_wmean=sum(wi*srs,na.rm=TRUE)/sum(wi,na.rm=TRUE)
+              )
     
    coach_bio_df$coach_sp[i] = temp$coach_sp_mean
    coach_bio_df$coach_srs[i] = temp$coach_srs_mean
+   
    #coach_bio_df$coach_winpct[i] = sum(temp$wins)/sum(temp$games)
 }
 
@@ -200,7 +203,7 @@ for (i in 1:n_hires)
 
 
 Get coaching performance before being hired again relative to historical
-```{r}
+```{r  warning=FALSE}
 
 # get number of rows in the coach bio df
 n_hires=nrow(coach_bio_df)
@@ -230,7 +233,7 @@ for (i in 1:n_hires)
       bind_rows(temp)
 }
 ```
-
+# get SP+, SRS for teams before previous head coaching jobs
 ```{r}
 # add three new variables for past performance as HC
 coach_team_hist_df <- coach_team_hist_df %>%
@@ -242,7 +245,7 @@ coach_team_hist_df <- coach_team_hist_df %>%
 temp=NULL
 for (i in 1:nrow(coach_team_hist_df))
 {
-  # get performance statistics for 25 years before previous coaching stops
+  # get performance statistics for prev_years before previous coaching stops
   temp<- coach_hist_df %>% 
     filter(school==coach_team_hist_df$school[i])%>%
     filter(year<coach_team_hist_df$start_year[i]) %>%
@@ -262,7 +265,8 @@ coach_team_hist_df$coach_team_winpct_past[i]=temp$past_winpct
 ```
 
 
-ZZ what is this exactly
+Get weighted average by games of average difference between coaches previous time 
+as HC - 
 ```{r}
 
 
